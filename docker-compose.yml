@@ -1,0 +1,31 @@
+# Local dev services — you'll need Docker Desktop installed to use this
+# (https://www.docker.com/products/docker-desktop/). Not required to start
+# coding, but the fastest way to get MinIO (S3-compatible storage) and
+# Redis (for the BullMQ queue) running without installing them natively.
+#
+# Usage:
+#   docker compose up -d
+#   MinIO console: http://localhost:9001  (user: minioadmin / pass: minioadmin)
+#   MinIO S3 API:  http://localhost:9000
+#   Redis:         localhost:6379
+
+services:
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  minio-data:
