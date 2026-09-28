@@ -4,10 +4,6 @@ A learning project: upload a file from a React UI, store it in S3
 (MinIO locally), stream it back on download, and process it in the
 background through a queue.
 
-This repo is **scaffolded, not implemented**. Folders, dependencies,
-and stub files with `TODO` comments are in place — the actual logic
-is intentionally left for you to write.
-
 ## Stack
 
 - **Client**: React (Vite)
@@ -48,11 +44,6 @@ s3-stream-demo/
         ├── api/client.js         # TODO: fetch wrapper for the API
         └── components/UploadForm.jsx  # TODO: upload UI
 ```
-
-Every `TODO` stub has comments describing what it needs to do and
-which library pieces (specific AWS SDK v3 classes, BullMQ classes) to
-look up — the goal is to leave the "why" and pointers without writing
-the implementation for you.
 
 ## Getting started
 
@@ -103,14 +94,35 @@ Roughly the order that keeps each step testable before moving on:
 - [ ] Implement `worker.js` — consume the job, read the file back via a stream, do something with it (log its size, count lines, whatever you want to practice with)
 - [ ] (Optional) swap MinIO for real AWS S3 and confirm nothing but `.env` changed
 
-## Pushing to GitHub
+## Ideas to build on later
 
-This repo has been `git init`'d locally with an initial commit. To push it:
+Things that came up while building the basics — deliberately skipped for
+now to keep the core flow (upload → store → stream → queue) simple, but
+worth coming back to:
 
-1. Create a new **empty** repo on GitHub (no README/gitignore/license — this repo already has those) — e.g. `s3-stream-demo`.
-2. Then run:
-   ```
-   git remote add origin git@github.com:<your-username>/s3-stream-demo.git
-   git branch -M main
-   git push -u origin main
-   ```
+- **`fileFilter` on multer** — reject file types you don't want (e.g. only
+  allow images) before they ever reach a controller. Useful validation
+  practice; skipped because you're uploading your own test files.
+
+- **Streaming uploads instead of buffering** — swap `multer.memoryStorage()`
+  for a streaming approach (`Upload` from `@aws-sdk/lib-storage`, fed by
+  the incoming request stream) so large files never sit fully in server
+  RAM. Buffering is fine at small file sizes; streaming is what real
+  production upload paths use.
+
+- **Disk storage vs memory storage (multer)** — `multer.diskStorage()`
+  writes the incoming file to a temp file on the server's disk instead of
+  holding it in RAM, which is friendlier for larger files but adds a step
+  (read the temp file, then upload it, then clean it up). Memory storage
+  is simpler and was the right call to start with.
+
+- **Pre-signed URLs** — instead of routing file bytes through Express at
+  all, generate a short-lived signed URL (`getSignedUrl` from
+  `@aws-sdk/s3-request-presigner`, already installed) and have the
+  browser upload *directly* to S3/MinIO. Removes the server as a
+  bottleneck/timeout risk for large or slow uploads entirely — this is
+  how most production apps actually do it.
+
+- **`fileSize` limit on multer** — currently unbounded; add
+  `limits: { fileSize: ... }` to `upload.middleware.js` and handle the
+  resulting error cleanly (multer throws before reaching the controller).
